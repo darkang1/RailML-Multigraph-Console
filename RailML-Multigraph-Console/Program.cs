@@ -65,6 +65,9 @@ namespace RailML_Multigraph_Console
                 mg.UpdateAnyVertexColor("swi3", VertexColors.Blue);
                 mg.UpdateAnyVertexSpotCoordinate("swi3", 777.07, 777.77);
 
+                // Removing Edge from Edge and AdjList
+                Console.WriteLine(mg.RemoveEdge("ne2", "ne2ne3")); 
+
                 // Displaying all information stored in Multigraph
                 mg.DisplayAllVertices();
                 mg.DisplayAllEdges();

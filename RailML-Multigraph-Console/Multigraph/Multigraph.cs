@@ -16,9 +16,8 @@ namespace RailML_Multigraph_Console
         [DataMember]
         public Dictionary<string, Edge> Edges { get; private set; } = new Dictionary<string, Edge>();
 
-
         // Experimental adjacency list (edges)
-        public Dictionary<string, HashSet<Edge>> AdjList { get; private set; } = new Dictionary<string, HashSet<Edge>>();
+        public Dictionary<string, Dictionary<string, Edge>> AdjList { get; private set; } = new Dictionary<string, Dictionary<string, Edge>>();
 
         // Layers
         [DataMember]
@@ -40,25 +39,25 @@ namespace RailML_Multigraph_Console
                     if (v is NetElement)
                     {
                         Vertices.TryAdd(v.GetID(), new M_TrackSection(v));
-                        AdjList.TryAdd(v.GetID(), new HashSet<Edge>());
+                        AdjList.TryAdd(v.GetID(), new Dictionary<string, Edge>());
                     }
                     // [M_BaliseGroup]
                     else if (v is Balise)
                     {
                         Vertices.TryAdd(v.GetID(), new M_BaliseGroup(v));
-                        AdjList.TryAdd(v.GetID(), new HashSet<Edge>());
+                        AdjList.TryAdd(v.GetID(), new Dictionary<string, Edge>());
                     }
                     // [M_Point]
                     else if (v is SwitchIS)
                     {
                         Vertices.TryAdd(v.GetID(), new M_Point(v));
-                        AdjList.TryAdd(v.GetID(), new HashSet<Edge>());
+                        AdjList.TryAdd(v.GetID(), new Dictionary<string, Edge>());
                     }
                     // [M_Track]
                     else if (v is Track)
                     {
                         Vertices.TryAdd(v.GetID(), new M_Track(v));
-                        AdjList.TryAdd(v.GetID(), new HashSet<Edge>());
+                        AdjList.TryAdd(v.GetID(), new Dictionary<string, Edge>());
                     }
                     else if (v is SpotElementProjection)
                     {
@@ -158,36 +157,34 @@ namespace RailML_Multigraph_Console
         // TO BE REMOVED LATER
         public bool AddEdge(Edge ne)
         {
-            AddEdge(ne.FromVertex, ne.ToVertex, ne.Type, ne.IsDirected);
-            return false;
+            return AddEdge(ne.FromVertex, ne.ToVertex, ne.Type, ne.IsDirected);
         }
-
 
         // AdjList Modified
         public bool AddEdge(Vertex from, Vertex to, EdgeType type = EdgeType.Unassigned, bool isDirected = true)
         {
             Edge ne = new Edge(from, to, type, isDirected);
-            HashSet<Edge> adjListValues;
+            Dictionary<string, Edge> adjListValues;
 
             // If Edge is directed, adding it only to "FromVertex" adjacency list
             if (AdjList.TryGetValue(from.ID, out adjListValues))
             {
-                adjListValues.Add(ne);
+                adjListValues.TryAdd(ne.ID, ne);
             }
             else
             {
-                AdjList.Add(from.ID, new HashSet<Edge>());
+                AdjList.Add(from.ID, new Dictionary<string, Edge>());
             }
             // If Edge is NOT directed, then also adding it to "ToVertex" adjacency lists
             if (!ne.IsDirected)
             {
-                if (AdjList.TryGetValue(from.ID, out adjListValues))
+                if (AdjList.TryGetValue(to.ID, out adjListValues))
                 {
-                    adjListValues.Add(ne);
+                    adjListValues.TryAdd(ne.ID, ne);
                 }
                 else
                 {
-                    AdjList.Add(from.ID, new HashSet<Edge>());
+                    AdjList.Add(to.ID, new Dictionary<string, Edge>());
                 }
             }
             return Edges.TryAdd(ne.ID, ne);
@@ -196,25 +193,27 @@ namespace RailML_Multigraph_Console
         // AdjList Modified
         public bool RemoveEdge(string vertexId, string edgeID)
         {
-            HashSet<Edge> adjListValues;
+            Dictionary<string, Edge> adjListValues;
 
             // If Edge is directed, removeing it only to "FromVertex" adjacency list
             if (AdjList.TryGetValue(vertexId, out adjListValues))
             {
-                Edge edgeToDelete = (Edge)adjListValues.Where(x => x.ID.Equals(edgeID));
-
-                if (!edgeToDelete.IsDirected)
+                Edge edgeToDelete;
+                if(adjListValues.TryGetValue(edgeID, out edgeToDelete))
                 {
-                    HashSet<Edge> adjListValues2;
-                    if (AdjList.TryGetValue(edgeToDelete.ToVertex.ID, out adjListValues2))
+                    // If Edge is NOT directed, then also removing it to "ToVertex" adjacency lists
+                    if (!edgeToDelete.IsDirected)
                     {
-                        Edge edgeToDelete2 = (Edge)adjListValues2.Where(x => x.ID.Equals(edgeID));
-                        // Removing Edge from the second Vertex AdjList
-                        adjListValues2.Remove(edgeToDelete2);
+                        Dictionary<string, Edge> adjListValues2;
+                        if (AdjList.TryGetValue(edgeToDelete.ToVertex.ID, out adjListValues2))
+                        {
+                            // Removing Edge from the ToVertex AdjList
+                            adjListValues2.Remove(edgeID);
+                        }
                     }
+                    // Removing Edge from the FromVertex AdjList
+                    adjListValues.Remove(edgeID);
                 }
-                // Removing Edge from the first Vertex AdjList
-                adjListValues.Remove(edgeToDelete);
             }
            
             return Edges.Remove(edgeID);
@@ -247,10 +246,8 @@ namespace RailML_Multigraph_Console
                                     //var converted_m_ts = (M_TrackSection)m_ts;
                                     if (!m_ts.ID.Equals(t.ThisNetElement.ID))
                                     {
-                                        Edge ne = new Edge(t, m_ts, type: EdgeType.AdjacentTrackSection);
+                                        Edge ne = new Edge(t, m_ts, type: EdgeType.AdjacentTrackSection, isDirected: false);
                                         AddEdge(ne);
-                                        Edges.TryAdd(ne.ID, ne);
-
                                     }
                                 }
                             }
@@ -270,9 +267,8 @@ namespace RailML_Multigraph_Console
                             {
                                 if (!m_ts.ID.Equals(b.ThisBalise.ID))
                                 {
-                                    Edge ne = new Edge(b, m_ts, type: EdgeType.AssignmentToATrackSection);
-                                    AddEdge(ne);
-                                    return Edges.TryAdd(ne.ID, ne);
+                                    Edge ne = new Edge(b, m_ts, type: EdgeType.AssignmentToATrackSection, isDirected: false);
+                                    return AddEdge(ne);
                                 }
                                 else
                                     return false;
@@ -292,9 +288,8 @@ namespace RailML_Multigraph_Console
                             {
                                 if (!m_ts.ID.Equals(p.ThisSwitchIS.ID))
                                 {
-                                    Edge ne = new Edge(p, m_ts, type: EdgeType.AssignmentToATrackSection);
-                                    AddEdge(ne);
-                                    return Edges.TryAdd(ne.ID, ne);
+                                    Edge ne = new Edge(p, m_ts, type: EdgeType.AssignmentToATrackSection, isDirected: false);
+                                    return AddEdge(ne);
                                 }
                                 else
                                     return false;
@@ -315,9 +310,8 @@ namespace RailML_Multigraph_Console
                             {
                                 if (!m_ts.ID.Equals(t.ThisTrack.ID))
                                 {
-                                    Edge ne = new Edge(t, m_ts, type: EdgeType.AssignmentToAMacroElement);
-                                    AddEdge(ne);
-                                    return Edges.TryAdd(ne.ID, ne);
+                                    Edge ne = new Edge(t, m_ts, type: EdgeType.AssignmentToAMacroElement, isDirected: false);
+                                    return AddEdge(ne);
                                 }
                                 else
                                     return false;
@@ -333,15 +327,6 @@ namespace RailML_Multigraph_Console
         }
 
         #endregion
-
-
-        #region Experimental Adjacency List Functions
-
-
-
-
-        #endregion
-
 
         #region Tasks Functions
 

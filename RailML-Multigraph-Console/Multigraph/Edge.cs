@@ -36,7 +36,7 @@ namespace RailML_Multigraph_Console
         public EdgeType Type { get; set; }
 
         [DataMember]
-        public bool IsDirected { get; set; } = true;
+        public bool IsDirected { get; set; } = false;
 
         public Edge()
         {
