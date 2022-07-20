@@ -24,7 +24,9 @@ namespace RailML_Multigraph_Console
         // Layers
         [DataMember]
         public Dictionary<string, Layer> Layers { get; protected set; } = new Dictionary<string, Layer>();
-        // Coordinate Elements
+        // Relation and Coordinate Elements
+
+        public Dictionary<string, NetRelation> NetRelations { get; private set; } = new Dictionary<string, NetRelation>();
         public Dictionary<string, SpotElementProjection> SpotElements { get; private set; } = new Dictionary<string, SpotElementProjection>();
         public Dictionary<string, LinearElementProjection> LinearElements { get; private set; } = new Dictionary<string, LinearElementProjection>();
 
@@ -60,6 +62,11 @@ namespace RailML_Multigraph_Console
                     {
                         Vertices.TryAdd(v.GetID(), new M_Track(v));
                         AdjList.TryAdd(v.GetID(), new Dictionary<string, Edge>());
+                    }
+                    else if (v is NetRelation)
+                    {
+                        var t = (NetRelation)v;
+                        NetRelations.TryAdd(t.ID, t);
                     }
                     else if (v is SpotElementProjection)
                     {
@@ -387,18 +394,89 @@ namespace RailML_Multigraph_Console
         public void Task1_FindAllTrainPaths(string startNodeID, string finalNodeID)
         {
             // Here we are going to be working only with vertices of type M_TrackSection,
-            // since they represent train path
+            // since they represent the train path
             if (Vertices == null)
                 return;
 
-            bool[] isVisited = new bool[Vertices.Count];
-            List<Edge> pathList = new List<Edge>();
+            HashSet<Vertex> visited = new HashSet<Vertex>();
+            HashSet<Vertex> pathList = new HashSet<Vertex>();
 
-            if (Vertices.ContainsKey(startNodeID))
+            pathList.Add(Vertices[startNodeID]);
+
+            Task1_FindAllTrainPathsUtil(startNodeID, finalNodeID, visited, pathList);
+        }
+
+        public void Task1_FindAllTrainPathsUtil(string currNodeID, string finalNodeID, HashSet<Vertex> visited, HashSet<Vertex> pathList)
+        {
+            if (currNodeID.Equals(finalNodeID))
             {
-
+                Console.WriteLine();
+                foreach(var elem in pathList)
+                {
+                    Console.Write($"{elem.ID} ");
+                }
+                return;
             }
 
+            visited.Add(Vertices[currNodeID]);
+
+            foreach(var edge in AdjList[currNodeID].Values)
+            {
+                if (currNodeID == edge.FromVertex.ID && edge.FromVertex is M_TrackSection)
+                {
+                    if (!visited.Contains(edge.ToVertex))
+                    {
+                        M_TrackSection ts = (M_TrackSection)edge.FromVertex;
+                        NetElement refNetElem = ts.ThisNetElement;
+
+                        foreach (var rel in refNetElem.Relations)
+                        {
+                            NetRelation netRel = rel.ActualNetRelationRef;
+
+                            bool isFromVertexAndElementAEqual = netRel.ElementA.ElementRef.Equals(edge.FromVertex.ID);
+                            bool isToVertexAndElementBEqual = netRel.ElementB.ElementRef.Equals(edge.ToVertex.ID);
+                            bool isNavigabilityEnabled = !netRel.Navigability.Equals("None");
+
+                            if (isFromVertexAndElementAEqual && isToVertexAndElementBEqual && isNavigabilityEnabled)
+                            {
+                                pathList.Add(edge.ToVertex);
+                                Task1_FindAllTrainPathsUtil(edge.ToVertex.ID, finalNodeID, visited, pathList);
+
+                                pathList.Remove(edge.ToVertex);
+                            }
+                        }
+                    }
+                }
+                else if (currNodeID == edge.ToVertex.ID && edge.FromVertex is M_TrackSection)
+                {
+                    if (!visited.Contains(edge.FromVertex))
+                    {
+                        M_TrackSection ts = (M_TrackSection)edge.FromVertex;
+                        NetElement refNetElem = ts.ThisNetElement;
+
+                        foreach (var rel in refNetElem.Relations)
+                        {
+                            NetRelation netRel = rel.ActualNetRelationRef;
+
+                            bool isFromVertexAndElementAEqual = netRel.ElementA.ElementRef.Equals(edge.FromVertex.ID);
+                            bool isToVertexAndElementBEqual = netRel.ElementB.ElementRef.Equals(edge.ToVertex.ID);
+                            bool isNavigabilityEnabled = !netRel.Navigability.Equals("None");
+
+                            if (isFromVertexAndElementAEqual && isToVertexAndElementBEqual && isNavigabilityEnabled)
+                            {
+                                pathList.Add(edge.FromVertex);
+                                Task1_FindAllTrainPathsUtil(edge.FromVertex.ID, finalNodeID, visited, pathList);
+
+                                pathList.Remove(edge.FromVertex);
+                            }
+                        }
+                    }
+                    //else
+                    // throw new InvalidOperationException("This vertex contains an Edge which is not related to it!");
+                }
+            }
+
+            visited.Remove(Vertices[currNodeID]);
         }
 
         #endregion
