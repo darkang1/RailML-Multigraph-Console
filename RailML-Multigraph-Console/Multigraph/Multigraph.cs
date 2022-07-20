@@ -15,6 +15,12 @@ namespace RailML_Multigraph_Console
         // Edges
         [DataMember]
         public Dictionary<string, Edge> Edges { get; private set; } = new Dictionary<string, Edge>();
+
+
+        // Experimental adjacency list (edges)
+        public Dictionary<string, HashSet<Edge>> AdjList { get; private set; } = new Dictionary<string, HashSet<Edge>>();
+
+
         // Layers
         [DataMember]
         public Dictionary<string, Layer> Layers { get; protected set; } = new Dictionary<string, Layer>();
@@ -271,6 +277,14 @@ namespace RailML_Multigraph_Console
         }
 
         #endregion
+
+
+        #region Experimental Adjacency List Functions
+
+
+
+        #endregion
+
 
         #region Tasks Functions
 
