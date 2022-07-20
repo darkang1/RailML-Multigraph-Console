@@ -21,7 +21,7 @@ namespace RailML_Multigraph_Console
                 RailML xmlData = (RailML)deserializer.Deserialize(reader);
                 reader.Close();
 
-                ElementAssigner.AssignElementsReferences(ref xmlData);
+                ElementAssigner.AssignElementsReferences(xmlData);
                 HashSet<ParsedElement> parsedElements = new HashSet<ParsedElement>();
                 
                 // NetElements
@@ -66,11 +66,13 @@ namespace RailML_Multigraph_Console
                 mg.UpdateAnyVertexSpotCoordinate("swi3", 777.07, 777.77);
 
                 // Removing Edge from Edge and AdjList
-                Console.WriteLine(mg.RemoveEdge("ne2", "ne2ne3")); 
+                mg.RemoveVertex("ne1");
+                mg.RemoveEdge("ne2", "ne2ne3"); 
 
                 // Displaying all information stored in Multigraph
                 mg.DisplayAllVertices();
                 mg.DisplayAllEdges();
+                mg.DisplayAdjList();
 
                 /////////////////////////
 

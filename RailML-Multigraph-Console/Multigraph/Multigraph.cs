@@ -17,6 +17,8 @@ namespace RailML_Multigraph_Console
         public Dictionary<string, Edge> Edges { get; private set; } = new Dictionary<string, Edge>();
 
         // Experimental adjacency list (edges)
+        // Key is ID of each vertex from Vertices dictionary
+        // Value is Dictionary of related edges to a specific vertex
         public Dictionary<string, Dictionary<string, Edge>> AdjList { get; private set; } = new Dictionary<string, Dictionary<string, Edge>>();
 
         // Layers
@@ -77,8 +79,41 @@ namespace RailML_Multigraph_Console
         // AdjList Modified
         public bool RemoveVertex(string id)
         {
-            AdjList.Remove(id);
+            RemoveVertexFromAdjList(id);
+            RemoveVertexFromEdgeList(id);
             return Vertices.Remove(id);
+        }
+
+        // AdjList Modified
+        public void RemoveVertexFromEdgeList(string id)
+        {
+            foreach (Edge e in Edges.Values)
+            {
+                if (e.FromVertex.ID == id || e.ToVertex.ID == id)
+                {
+                    Edges.Remove(e.ID);
+                }
+            }
+        }
+
+        // AdjList Modified
+        public void RemoveVertexFromAdjList(string vertexId)
+        {
+            Dictionary<string, Edge> adjListValues;
+            if (AdjList.TryGetValue(vertexId, out adjListValues))
+            {
+                // Removing the same edges from related vertices adjacency lists
+                foreach(var edge in adjListValues.Values)
+                {
+                    if (vertexId == edge.FromVertex.ID)
+                        RemoveEdge(edge.ToVertex.ID, edge.ID);
+                    else if (vertexId == edge.ToVertex.ID)
+                        RemoveEdge(edge.FromVertex.ID, edge.ID);
+                    else
+                        throw new InvalidOperationException("This vertex contains an Edge which is not related to it!");                    
+                }
+                AdjList.Remove(vertexId);
+            }               
         }
 
         public void AutoAssignElementsCoordinates()
@@ -153,45 +188,64 @@ namespace RailML_Multigraph_Console
         #endregion
 
         #region Edge Functions
-        // FOR TESTING PURPOSES!!!
-        // TO BE REMOVED LATER
+
+        // AdjList Modified
         public bool AddEdge(Edge ne)
         {
-            return AddEdge(ne.FromVertex, ne.ToVertex, ne.Type, ne.IsDirected);
+            AddEdgeToAdjList(ne);
+            return Edges.TryAdd(ne.ID, ne);
         }
 
         // AdjList Modified
         public bool AddEdge(Vertex from, Vertex to, EdgeType type = EdgeType.Unassigned, bool isDirected = true)
         {
             Edge ne = new Edge(from, to, type, isDirected);
+            return AddEdge(ne);
+        }
+
+        // AdjList Modified
+        public void AddEdgeToAdjList(Edge ne)
+        {
             Dictionary<string, Edge> adjListValues;
 
             // If Edge is directed, adding it only to "FromVertex" adjacency list
-            if (AdjList.TryGetValue(from.ID, out adjListValues))
+            if (AdjList.TryGetValue(ne.FromVertex.ID, out adjListValues))
             {
                 adjListValues.TryAdd(ne.ID, ne);
             }
             else
             {
-                AdjList.Add(from.ID, new Dictionary<string, Edge>());
+                AdjList.Add(ne.FromVertex.ID, new Dictionary<string, Edge>());
             }
             // If Edge is NOT directed, then also adding it to "ToVertex" adjacency lists
             if (!ne.IsDirected)
             {
-                if (AdjList.TryGetValue(to.ID, out adjListValues))
+                if (AdjList.TryGetValue(ne.ToVertex.ID, out adjListValues))
                 {
                     adjListValues.TryAdd(ne.ID, ne);
                 }
                 else
                 {
-                    AdjList.Add(to.ID, new Dictionary<string, Edge>());
+                    AdjList.Add(ne.ToVertex.ID, new Dictionary<string, Edge>());
                 }
             }
-            return Edges.TryAdd(ne.ID, ne);
+        }
+
+        // AdjList Modified
+        public bool RemoveEdge(string edgeID)
+        {
+            return Edges.Remove(edgeID);
         }
 
         // AdjList Modified
         public bool RemoveEdge(string vertexId, string edgeID)
+        {
+            RemoveEdgeFromAdjList(vertexId, edgeID);
+            return Edges.Remove(edgeID);
+        }
+
+        // AdjList Modified
+        public void RemoveEdgeFromAdjList(string vertexId, string edgeID)
         {
             Dictionary<string, Edge> adjListValues;
 
@@ -199,7 +253,7 @@ namespace RailML_Multigraph_Console
             if (AdjList.TryGetValue(vertexId, out adjListValues))
             {
                 Edge edgeToDelete;
-                if(adjListValues.TryGetValue(edgeID, out edgeToDelete))
+                if (adjListValues.TryGetValue(edgeID, out edgeToDelete))
                 {
                     // If Edge is NOT directed, then also removing it to "ToVertex" adjacency lists
                     if (!edgeToDelete.IsDirected)
@@ -215,8 +269,6 @@ namespace RailML_Multigraph_Console
                     adjListValues.Remove(edgeID);
                 }
             }
-           
-            return Edges.Remove(edgeID);
         }
 
         public void AssignEdgesForAllVertices()
@@ -227,6 +279,7 @@ namespace RailML_Multigraph_Console
             }
         }
 
+        // AdjList Modified
         public bool AutoAssignEdge(Vertex v)
         {
             if (v != null)
@@ -380,7 +433,6 @@ namespace RailML_Multigraph_Console
         public void DisplayAllVertices()
         {
             Console.WriteLine("\n\t======Mulitgraph Vertices======");
-
             // Initializing a dictionary with all possible vertex types
             Dictionary<Type, string> vertexType = new Dictionary<Type, string>(){ 
                 {typeof(M_TrackSection), "TrackSection"},
@@ -427,13 +479,37 @@ namespace RailML_Multigraph_Console
             {
                 Console.WriteLine("|-------------------------------|");
                 foreach (Edge edge in Edges.Values ?? Enumerable.Empty<Edge>())
-                {
                     Console.WriteLine($"[<{edge.FromVertex.ID}, {edge.ToVertex.ID}>: {edge.Type}]");
-                }
+
                 Console.WriteLine("|-------------------------------|\n");
             }
             else
                 Console.WriteLine("Edge list is empty!\n");
+        }
+
+        public void DisplayAdjList()
+        {
+            Console.WriteLine("\n\t======Mulitgraph Adjacency List======");
+            if (AdjList != null && AdjList.Count > 0)
+            {
+                Console.WriteLine("|---------------------------------------------|");
+
+                foreach(var item in AdjList)
+                {
+                    Console.WriteLine($"\n[ID: {item.Key}]");
+                    if (item.Value.Count > 0)
+                    {
+                        foreach (var edge in item.Value)
+                            Console.WriteLine($"|<{edge.Value.FromVertex.ID}, {edge.Value.ToVertex.ID}>: {edge.Value.Type}|");
+                    }
+                    else
+                        Console.WriteLine("Empty!");
+
+                }
+                Console.WriteLine("|---------------------------------------------|\n");
+            }
+            else
+                Console.WriteLine("Adjacency List is empty!\n");
         }
 
         #endregion

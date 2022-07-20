@@ -8,19 +8,19 @@ namespace RailML_Multigraph_Console
 {
     public static class ElementAssigner
     {
-        public static void AssignElementsReferences(ref RailML xmlData)
+        public static void AssignElementsReferences(RailML xmlData)
         {
-            AssignNetElements(ref xmlData);
-            AssignNetRelations(ref xmlData);
-            AssignBalises(ref xmlData);
-            AssignBufferStops(ref xmlData);
-            AssignSwitchesIS(ref xmlData);
-            AssignTracks(ref xmlData);
+            AssignNetElements(xmlData);
+            AssignNetRelations(xmlData);
+            AssignBalises(xmlData);
+            AssignBufferStops(xmlData);
+            AssignSwitchesIS(xmlData);
+            AssignTracks(xmlData);
 
             Console.WriteLine("Element assignment process finished!");
         }
 
-        public static void AssignNetElements(ref RailML xmlData)
+        public static void AssignNetElements(RailML xmlData)
         {
             try
             {
@@ -47,7 +47,7 @@ namespace RailML_Multigraph_Console
 
         }
 
-        public static void AssignNetRelations(ref RailML xmlData)
+        public static void AssignNetRelations(RailML xmlData)
         {
             try
             {
@@ -86,7 +86,7 @@ namespace RailML_Multigraph_Console
             }
         }
 
-        public static void AssignBalises(ref RailML xmlData)
+        public static void AssignBalises(RailML xmlData)
         {
             try
             {
@@ -111,7 +111,7 @@ namespace RailML_Multigraph_Console
             }
         }
 
-        public static void AssignBufferStops(ref RailML xmlData)
+        public static void AssignBufferStops(RailML xmlData)
         {
             try
             {
@@ -136,7 +136,7 @@ namespace RailML_Multigraph_Console
             }
         }
 
-        public static void AssignSwitchesIS(ref RailML xmlData)
+        public static void AssignSwitchesIS(RailML xmlData)
         {
             try
             {
@@ -189,7 +189,7 @@ namespace RailML_Multigraph_Console
             }
         }
 
-        public static void AssignTracks(ref RailML xmlData)
+        public static void AssignTracks(RailML xmlData)
         {
             // Later will be needed to extend functionality to assigning TrackBegin and TrackEnd
             // Currently it is too complicated due to the fact that TrackBeging/TrackEnd can be different object types
