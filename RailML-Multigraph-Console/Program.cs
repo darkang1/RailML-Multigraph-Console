@@ -77,10 +77,9 @@ namespace RailML_Multigraph_Console
                 string s = "ne1";
 
                 // arbitrary destination
-                string d = "ne4";
+                string d = "ne3";
 
-                Console.WriteLine("Following are all different"
-                                  + " paths from " + s + " to " + d);
+                Console.WriteLine("All possible train paths from " + s + " to " + d + ":");
                 mg.Task1_FindAllTrainPaths(s, d);
 
                 /////////////////////////
