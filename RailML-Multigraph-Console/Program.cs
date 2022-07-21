@@ -79,8 +79,10 @@ namespace RailML_Multigraph_Console
                 // Destination tracksection
                 string d = "ne3";
 
-                Console.WriteLine("All possible train paths from " + s + " to " + d + ":");
+                Console.WriteLine("[Task1 Results]");
+                Console.WriteLine("(All possible train paths from " + s + " to " + d + ")");
                 mg.Task1_FindAllTrainPaths(s, d);
+                mg.Task2_FindLengthOfAllTravelPaths();
 
                 /////////////////////////
 

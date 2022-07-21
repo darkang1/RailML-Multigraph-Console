@@ -87,6 +87,8 @@ namespace RailML_Multigraph_Console
     public class M_TrackSection : Vertex
     {
         public NetElement ThisNetElement { get; private set; }
+
+        public double Length { get; private set; }
         
         public M_TrackSection()
         {
@@ -121,6 +123,10 @@ namespace RailML_Multigraph_Console
             this.Color = VertexColors.DarkRed;
         }
 
+        public void SetLength(double newLength)
+        {
+            Length = newLength;
+        }
     }
 
     [DataContract]

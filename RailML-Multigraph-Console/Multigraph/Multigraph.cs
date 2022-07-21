@@ -419,12 +419,8 @@ namespace RailML_Multigraph_Console
             // If we reached the final node, print the results
             if (currNodeID.Equals(finalNodeID))
             {
-                Console.WriteLine();
-                foreach(var elem in pathList)
-                {
-                    Console.Write($"{elem.ID} ");
-                }
-                AddTravelPath(pathList);
+                Task1_PrintResults(pathList);
+                AddTravelPath(new HashSet<Vertex>(pathList, pathList.Comparer));
                 return;
             }
          
@@ -481,7 +477,86 @@ namespace RailML_Multigraph_Console
                     }
                 }
             }
-            visited.Remove(Vertices[currNodeID]);
+            visited.Remove(currNode);
+        }
+
+        public Dictionary<string, double> Task2_FindLengthOfAllTravelPaths()
+        {
+            if(TravelPaths.Count == 0)
+                Console.WriteLine("TravelPaths list is empty!");
+
+            // Represents total path length for a given path ID
+            Dictionary<string, double> pathsWithLength = new Dictionary<string, double>();
+
+            // Iterating through each TravelPath
+            foreach (var path in TravelPaths)
+            {
+                // Storing lengthes of all vertices that belongs to the current path
+                Dictionary<string, double> verticesWithLength = new Dictionary<string, double>();
+                foreach (var vertex in path.Value)
+                {
+                    // Verifying that we have only M_TrackSection objects
+                    if (vertex is not M_TrackSection)
+                        throw new ArgumentException("Invalid vertices were detected in TravelPaths list!");
+
+                    // Extracting NetElement from current TrackSection vertex to get its GeometricCoordinates
+                    NetElement currNetElem = (vertex as M_TrackSection).ThisNetElement;
+                    Dictionary<string, GeometricCoordinate> gpsCoordinates = new Dictionary<string, GeometricCoordinate>();
+                    foreach (var intrisicCoordinate in currNetElem.AssociatedPositioningSystem.IntrinsicCoordinates)
+                        gpsCoordinates.TryAdd(intrisicCoordinate.ID, intrisicCoordinate.GeometricCoordinate);
+
+                    // Calculating length between two geometric points and adding them all up to get total length
+                    double totalTrackLength = 0.0;
+                    for (int i = 0; i < gpsCoordinates.Count; i++)
+                    {
+                        if (i > 0)
+                        {
+                            double x1 = gpsCoordinates.ElementAtOrDefault(i - 1).Value.X;
+                            double y1 = gpsCoordinates.ElementAtOrDefault(i - 1).Value.Y;
+
+                            double x2 = gpsCoordinates.ElementAtOrDefault(i).Value.X;
+                            double y2 = gpsCoordinates.ElementAtOrDefault(i).Value.Y;
+
+                            // Here we are using distance formula derived from Pythagorean theorem
+                            double length = CalcTrackSectionLength(x1, y1, x2, y2);
+                            totalTrackLength += length;
+                        }
+                    }
+                    // Setting length to the current TrackSection vertex, as required in the Task
+                    (vertex as M_TrackSection).SetLength(totalTrackLength);
+                    verticesWithLength.TryAdd(vertex.ID, (vertex as M_TrackSection).Length);
+                }
+                // Calculating total path length from obtained vertices length values
+                double totalTrackPathLength = 0.0;
+                foreach (double trackLength in verticesWithLength.Values)
+                    totalTrackPathLength += trackLength;
+
+                // Adding path with calculated total length to dictionary
+                pathsWithLength.TryAdd(path.Key, totalTrackPathLength);
+            }
+
+            Task2_PrintResults(pathsWithLength);
+            return pathsWithLength;
+        }
+
+        public void Task1_PrintResults(HashSet<Vertex> pathList)
+        {
+            Console.WriteLine();
+            foreach (var elem in pathList)
+                Console.Write($"{elem.ID} ");
+        }
+
+        public void Task2_PrintResults(Dictionary<string, double> results)
+        {
+            Console.WriteLine("\n|---------------------------------------------|\n");
+            Console.WriteLine("[Task2 Results]");
+            Console.WriteLine("(Calculated length for all train paths from geometric positioning coordinates)\n");
+            foreach(var item in results)
+            {
+                Console.WriteLine($"ID: {item.Key}");
+                Console.WriteLine($"Length: {Math.Round(item.Value, 3)} units\n");
+            }
+            Console.WriteLine("|---------------------------------------------|\n");
         }
 
         public bool AddTravelPath(HashSet<Vertex> path)
@@ -507,7 +582,13 @@ namespace RailML_Multigraph_Console
             }
             else
                 return String.Empty;
-        }  
+        }
+
+        private double CalcTrackSectionLength(double x1, double y1, double x2, double y2)
+        {
+            return Math.Sqrt(Math.Pow(x2 - x1, 2) +
+                          Math.Pow(y2 - y1, 2) * 1.0);
+        }
 
         #endregion
 
