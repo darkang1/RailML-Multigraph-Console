@@ -28,9 +28,7 @@ namespace RailML_Multigraph_Console
         [DataMember]
         public string Color { get; protected set; }
         [DataMember]
-        public Dictionary<string, Vertex> Vertices { get; private set; } = new Dictionary<string, Vertex>();
-        
-        //public Dictionary<string, Edge> Edges { get; private set; } = new Dictionary<string, Edge>();
+        public Dictionary<string, Vertex> Vertices { get; private set; } = new Dictionary<string, Vertex>();       
 
         public Layer(string name, string color = "None")
         {

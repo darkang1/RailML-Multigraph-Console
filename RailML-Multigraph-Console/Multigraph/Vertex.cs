@@ -32,9 +32,6 @@ namespace RailML_Multigraph_Console
         [DataMember]
         public List<Coordinate> Coordinates { get; protected set; } = new List<Coordinate>();
 
-        public Dictionary<string, Edge> Neighbours { get; protected set; } = new Dictionary<string, Edge>();
-
-        
         // Contains HashSet of Layer(s) ID's vertex belongs to
         [DataMember]
         public HashSet<string> Layers { get; protected set; } = new HashSet<string>();
@@ -87,7 +84,6 @@ namespace RailML_Multigraph_Console
     public class M_TrackSection : Vertex
     {
         public NetElement ThisNetElement { get; private set; }
-
         public double Length { get; private set; }
         
         public M_TrackSection()
