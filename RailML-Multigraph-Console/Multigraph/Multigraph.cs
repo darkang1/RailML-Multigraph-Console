@@ -26,10 +26,11 @@ namespace RailML_Multigraph_Console
         [DataMember]
         public Dictionary<string, Layer> Layers { get; protected set; } = new Dictionary<string, Layer>();
         
-        // Relation and Coordinate Elements
+        // Relations, Coordinate Elements, and all possible Travel Paths
         public Dictionary<string, NetRelation> NetRelations { get; private set; } = new Dictionary<string, NetRelation>();
         public Dictionary<string, SpotElementProjection> SpotElements { get; private set; } = new Dictionary<string, SpotElementProjection>();
         public Dictionary<string, LinearElementProjection> LinearElements { get; private set; } = new Dictionary<string, LinearElementProjection>();
+        public Dictionary<string, Dictionary<string, Vertex>> TravelPaths { get; private set; } = new Dictionary<string, Dictionary<string, Vertex>>();
 
 
         #region Vertex Functions
@@ -431,16 +432,22 @@ namespace RailML_Multigraph_Console
                 throw new ArgumentException("Invalid Vertex ID was passsed to train path traversing function!");
 
             // Marking current vertex as "visited"
-            visited.Add(Vertices[currNodeID]);
+            visited.Add(currNode);
+
+            Dictionary<string, Edge> currNodeAdjList;
+            if (!AdjList.TryGetValue(currNodeID, out currNodeAdjList))
+                throw new ArgumentException("Invalid Vertex ID was passsed to train path traversing function!");
 
             // Recur for all vertices adjacent to the current one
-            foreach(var edge in AdjList[currNodeID].Values)
+            foreach (var edge in currNodeAdjList.Values)
             {
                 bool areBothVerticesTrackSections = edge.FromVertex is M_TrackSection && edge.ToVertex is M_TrackSection;
-               
+
                 // Current node may appear either in FromVertex or ToVertex, depending on the node we are looking at
                 // Having two handling options depending on where current Vertex is located in Edge object
                 // Also, we are only looking for M_TrackSection objects, since they represent railway sections
+                Vertex nextVertex = (currNodeID == edge.FromVertex.ID) ? edge.ToVertex : ((currNodeID == edge.ToVertex.ID) ? edge.FromVertex : edge.ToVertex);
+
                 if (currNodeID == edge.FromVertex.ID && areBothVerticesTrackSections)
                 {
                     if (!visited.Contains(edge.ToVertex))
