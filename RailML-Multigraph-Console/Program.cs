@@ -66,7 +66,7 @@ namespace RailML_Multigraph_Console
                 mg.UpdateAnyVertexSpotCoordinate("swi3", 777.07, 777.77);
 
                 // Removing Edge from Edge and AdjList
-                //mg.RemoveVertex("ne1");
+                //mg.RemoveVertex("ne3");
                 //mg.RemoveEdge("ne2", "ne2ne3"); 
 
                 // Displaying all information stored in Multigraph
@@ -74,9 +74,9 @@ namespace RailML_Multigraph_Console
                 mg.DisplayAllEdges();
                 mg.DisplayAdjList();
 
+                // Start tracksection
                 string s = "ne1";
-
-                // arbitrary destination
+                // Destination tracksection
                 string d = "ne3";
 
                 Console.WriteLine("All possible train paths from " + s + " to " + d + ":");

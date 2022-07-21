@@ -19,13 +19,14 @@ namespace RailML_Multigraph_Console
         // Experimental adjacency list (edges)
         // Key is ID of each vertex from Vertices dictionary
         // Value is Dictionary of related edges to a specific vertex
+        [DataMember]
         public Dictionary<string, Dictionary<string, Edge>> AdjList { get; private set; } = new Dictionary<string, Dictionary<string, Edge>>();
 
         // Layers
         [DataMember]
         public Dictionary<string, Layer> Layers { get; protected set; } = new Dictionary<string, Layer>();
+        
         // Relation and Coordinate Elements
-
         public Dictionary<string, NetRelation> NetRelations { get; private set; } = new Dictionary<string, NetRelation>();
         public Dictionary<string, SpotElementProjection> SpotElements { get; private set; } = new Dictionary<string, SpotElementProjection>();
         public Dictionary<string, LinearElementProjection> LinearElements { get; private set; } = new Dictionary<string, LinearElementProjection>();
@@ -314,7 +315,6 @@ namespace RailML_Multigraph_Console
                         }
                         return true;
                     }
-
                 }
                 else if (v is M_BaliseGroup)
                 {
@@ -353,7 +353,6 @@ namespace RailML_Multigraph_Console
                                 }
                                 else
                                     return false;
-
                             }
                         }
                     }
@@ -381,7 +380,6 @@ namespace RailML_Multigraph_Console
                 }
                 else
                     throw new InvalidCastException();
-
             }
             return false;
         }
@@ -390,24 +388,34 @@ namespace RailML_Multigraph_Console
 
         #region Tasks Functions
 
-        // UNFINISHED
         public void Task1_FindAllTrainPaths(string startNodeID, string finalNodeID)
         {
-            // Here we are going to be working only with vertices of type M_TrackSection,
-            // since they represent the train path
+            // Here we are going to be working only with vertices of type M_TrackSection and its included NetRelations,
+            // since M_TrackSection represents the train path and its included NetRelation contains navigability of those sections
             if (Vertices == null)
                 return;
 
+            // Hashset of all visited nodes
             HashSet<Vertex> visited = new HashSet<Vertex>();
+            // Hashset to keep track of the vertices along the path
             HashSet<Vertex> pathList = new HashSet<Vertex>();
 
-            pathList.Add(Vertices[startNodeID]);
-
-            Task1_FindAllTrainPathsUtil(startNodeID, finalNodeID, visited, pathList);
+            // Simple check to verify if the starting node with provided ID exists
+            Vertex startNode;
+            if(Vertices.TryGetValue(startNodeID, out startNode))
+            {
+                // Adding start node to the pathlist
+                pathList.Add(startNode);
+                // Calling recursive funciton to find all possible paths
+                Task1_FindAllTrainPathsUtil(startNodeID, finalNodeID, visited, pathList);
+            }
+            else
+                throw new ArgumentException("Invalid Vertex ID was passsed to train path traversing function!");         
         }
 
         public void Task1_FindAllTrainPathsUtil(string currNodeID, string finalNodeID, HashSet<Vertex> visited, HashSet<Vertex> pathList)
         {
+            // If we reached the final node, print the results
             if (currNodeID.Equals(finalNodeID))
             {
                 Console.WriteLine();
@@ -417,37 +425,57 @@ namespace RailML_Multigraph_Console
                 }
                 return;
             }
+         
+            Vertex currNode;
+            if(!Vertices.TryGetValue(currNodeID, out currNode))
+                throw new ArgumentException("Invalid Vertex ID was passsed to train path traversing function!");
 
+            // Marking current vertex as "visited"
             visited.Add(Vertices[currNodeID]);
 
+            // Recur for all vertices adjacent to the current one
             foreach(var edge in AdjList[currNodeID].Values)
             {
-                if (currNodeID == edge.FromVertex.ID && edge.FromVertex is M_TrackSection)
+                bool areBothVerticesTrackSections = edge.FromVertex is M_TrackSection && edge.ToVertex is M_TrackSection;
+               
+                // Current node may appear either in FromVertex or ToVertex, depending on the node we are looking at
+                // Having two handling options depending on where current Vertex is located in Edge object
+                // Also, we are only looking for M_TrackSection objects, since they represent railway sections
+                if (currNodeID == edge.FromVertex.ID && areBothVerticesTrackSections)
                 {
                     if (!visited.Contains(edge.ToVertex))
                     {
+                        // Extracting NetElement from M_TrackSection to get its NetRelations
+                        // for proper handling of the Tracksection directions
                         M_TrackSection ts = (M_TrackSection)edge.FromVertex;
                         NetElement refNetElem = ts.ThisNetElement;
 
+                        // Looking at each Relation of the current node to find related to our current traversing case
                         foreach (var rel in refNetElem.Relations)
                         {
                             NetRelation netRel = rel.ActualNetRelationRef;
 
+                            // Verifying whether it's proper NetRelation by the following parameters:
                             bool isFromVertexAndElementAEqual = netRel.ElementA.ElementRef.Equals(edge.FromVertex.ID);
                             bool isToVertexAndElementBEqual = netRel.ElementB.ElementRef.Equals(edge.ToVertex.ID);
-                            bool isNavigabilityEnabled = !netRel.Navigability.Equals("None");
+                            bool isNavigabilityEnabled = !netRel.Navigability.Equals("None"); // Later this check needs to be modified, since there can be "AB" and "BA" cases which should be handled differently
 
+                            // If both vertices correlate with NetRelation vertices in proper order and Navigability parameter is not disbaled
+                            // Navigability parameter shows whether we can perform "train transition" on the current NetRelation of two different TrackSections
                             if (isFromVertexAndElementAEqual && isToVertexAndElementBEqual && isNavigabilityEnabled)
                             {
+                                // Adding ToVertex to our pathlist
                                 pathList.Add(edge.ToVertex);
+                                // Recursivly call function to find all possible paths from ToVertex
                                 Task1_FindAllTrainPathsUtil(edge.ToVertex.ID, finalNodeID, visited, pathList);
-
+                                // Removing current node from the pathlist
                                 pathList.Remove(edge.ToVertex);
                             }
                         }
                     }
                 }
-                else if (currNodeID == edge.ToVertex.ID && edge.FromVertex is M_TrackSection)
+                // The same thing as the first 'if' statement, but now handling the case where current node is in ToVertex place
+                else if (currNodeID == edge.ToVertex.ID && areBothVerticesTrackSections)
                 {
                     if (!visited.Contains(edge.FromVertex))
                     {
@@ -471,17 +499,15 @@ namespace RailML_Multigraph_Console
                             }
                         }
                     }
-                    //else
-                    // throw new InvalidOperationException("This vertex contains an Edge which is not related to it!");
                 }
             }
-
             visited.Remove(Vertices[currNodeID]);
         }
 
         #endregion
 
         #region Layers
+        // NOT IMPLEMENTED YET
         public bool AutoGenerateBasicLayers()
         {
             //foreach(M_TrackSection netElem in TrackSections.Values ?? Enumerable.Empty<M_TrackSection>())
