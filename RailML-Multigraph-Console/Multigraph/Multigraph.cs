@@ -30,7 +30,7 @@ namespace RailML_Multigraph_Console
         public Dictionary<string, NetRelation> NetRelations { get; private set; } = new Dictionary<string, NetRelation>();
         public Dictionary<string, SpotElementProjection> SpotElements { get; private set; } = new Dictionary<string, SpotElementProjection>();
         public Dictionary<string, LinearElementProjection> LinearElements { get; private set; } = new Dictionary<string, LinearElementProjection>();
-        public Dictionary<string, Dictionary<string, Vertex>> TravelPaths { get; private set; } = new Dictionary<string, Dictionary<string, Vertex>>();
+        public Dictionary<string, HashSet<Vertex>> TravelPaths { get; private set; } = new Dictionary<string, HashSet<Vertex>>();
 
 
         #region Vertex Functions
@@ -424,6 +424,7 @@ namespace RailML_Multigraph_Console
                 {
                     Console.Write($"{elem.ID} ");
                 }
+                AddTravelPath(pathList);
                 return;
             }
          
@@ -483,34 +484,59 @@ namespace RailML_Multigraph_Console
             visited.Remove(Vertices[currNodeID]);
         }
 
+        public bool AddTravelPath(HashSet<Vertex> path)
+        {
+            string pathID = GenerateIDForTravelPath(path);
+            return TravelPaths.TryAdd(pathID, path);
+        }
+
+        private string GenerateIDForTravelPath(HashSet<Vertex> path)
+        {
+            if (path != null)
+            {
+                string combinedID = String.Empty;
+                foreach (Vertex v in path)
+                {
+                    if (combinedID != String.Empty)
+                        combinedID += "+" + v.ID;
+                    else
+                        combinedID += v.ID;
+
+                }
+                return combinedID;
+            }
+            else
+                return String.Empty;
+        }  
+
         #endregion
 
         #region Layers
         // NOT IMPLEMENTED YET
         public bool AutoGenerateBasicLayers()
-        {
-            //foreach(M_TrackSection netElem in TrackSections.Values ?? Enumerable.Empty<M_TrackSection>())
-            //{
+            {
+                //foreach(M_TrackSection netElem in TrackSections.Values ?? Enumerable.Empty<M_TrackSection>())
+                //{
 
-            //}
-            return true;
-        }
+                //}
+                return true;
+            }
 
-        // Creates new empty layer
-        public bool CreateLayer(string layerName)
-        {
-            Layer layer = new Layer(layerName);
-            return Layers.TryAdd(layerName, layer);
-        }
+            // Creates new empty layer
+            public bool CreateLayer(string layerName)
+            {
+                Layer layer = new Layer(layerName);
+                return Layers.TryAdd(layerName, layer);
+            }
 
-        // Creates new layer with vertices
-        public bool CreateLayer(string layerName, Dictionary<string, Vertex> vertices)
-        {
-            Layer layer = new Layer(layerName, vertices);
-            return Layers.TryAdd(layerName, layer);
-        }
+            // Creates new layer with vertices
+            public bool CreateLayer(string layerName, Dictionary<string, Vertex> vertices)
+            {
+                Layer layer = new Layer(layerName, vertices);
+                return Layers.TryAdd(layerName, layer);
+            }
 
-        #endregion
+            #endregion
 
         #region Printing Functions
         public void DisplayAllVertices()
