@@ -26,10 +26,11 @@ namespace RailML_Multigraph_Console
         [DataMember]
         public Dictionary<string, Layer> Layers { get; protected set; } = new Dictionary<string, Layer>();
         
-        // Relation and Coordinate Elements
+        // Relations, Coordinate Elements, and all possible Travel Paths
         public Dictionary<string, NetRelation> NetRelations { get; private set; } = new Dictionary<string, NetRelation>();
         public Dictionary<string, SpotElementProjection> SpotElements { get; private set; } = new Dictionary<string, SpotElementProjection>();
         public Dictionary<string, LinearElementProjection> LinearElements { get; private set; } = new Dictionary<string, LinearElementProjection>();
+        public Dictionary<string, Dictionary<string, Vertex>> TravelPaths { get; private set; } = new Dictionary<string, Dictionary<string, Vertex>>();
 
 
         #region Vertex Functions
@@ -431,19 +432,23 @@ namespace RailML_Multigraph_Console
                 throw new ArgumentException("Invalid Vertex ID was passsed to train path traversing function!");
 
             // Marking current vertex as "visited"
-            visited.Add(Vertices[currNodeID]);
+            visited.Add(currNode);
+
+            Dictionary<string, Edge> currNodeAdjList;
+            if (!AdjList.TryGetValue(currNodeID, out currNodeAdjList))
+                throw new ArgumentException("Invalid Vertex ID was passsed to train path traversing function!");
 
             // Recur for all vertices adjacent to the current one
-            foreach(var edge in AdjList[currNodeID].Values)
+            foreach (var edge in currNodeAdjList.Values)
             {
+                // Checking if both Vertices from Edge object are TrackSections, since they represent railway sections
                 bool areBothVerticesTrackSections = edge.FromVertex is M_TrackSection && edge.ToVertex is M_TrackSection;
-               
-                // Current node may appear either in FromVertex or ToVertex, depending on the node we are looking at
-                // Having two handling options depending on where current Vertex is located in Edge object
-                // Also, we are only looking for M_TrackSection objects, since they represent railway sections
-                if (currNodeID == edge.FromVertex.ID && areBothVerticesTrackSections)
+                // Depending on at which possition in Edge object is our current Vertex (FromVertex or ToVertex), setting the next vertex object to parse accordingly
+                Vertex nextVertex = (currNodeID == edge.FromVertex.ID) ? edge.ToVertex : ((currNodeID == edge.ToVertex.ID) ? edge.FromVertex : edge.ToVertex);
+
+                if (areBothVerticesTrackSections)
                 {
-                    if (!visited.Contains(edge.ToVertex))
+                    if (!visited.Contains(nextVertex))
                     {
                         // Extracting NetElement from M_TrackSection to get its NetRelations
                         // for proper handling of the Tracksection directions
@@ -458,44 +463,18 @@ namespace RailML_Multigraph_Console
                             // Verifying whether it's proper NetRelation by the following parameters:
                             bool isFromVertexAndElementAEqual = netRel.ElementA.ElementRef.Equals(edge.FromVertex.ID);
                             bool isToVertexAndElementBEqual = netRel.ElementB.ElementRef.Equals(edge.ToVertex.ID);
-                            bool isNavigabilityEnabled = !netRel.Navigability.Equals("None"); // Later this check needs to be modified, since there can be "AB" and "BA" cases which should be handled differently
+                            bool isNavigabilityEnabled = !netRel.Navigability.Equals("None"); // !!! Later this check needs to be modified, since there can be "AB" and "BA" cases which should be handled differently
 
                             // If both vertices correlate with NetRelation vertices in proper order and Navigability parameter is not disbaled
                             // Navigability parameter shows whether we can perform "train transition" on the current NetRelation of two different TrackSections
                             if (isFromVertexAndElementAEqual && isToVertexAndElementBEqual && isNavigabilityEnabled)
                             {
                                 // Adding ToVertex to our pathlist
-                                pathList.Add(edge.ToVertex);
+                                pathList.Add(nextVertex);
                                 // Recursivly call function to find all possible paths from ToVertex
-                                Task1_FindAllTrainPathsUtil(edge.ToVertex.ID, finalNodeID, visited, pathList);
+                                Task1_FindAllTrainPathsUtil(nextVertex.ID, finalNodeID, visited, pathList);
                                 // Removing current node from the pathlist
-                                pathList.Remove(edge.ToVertex);
-                            }
-                        }
-                    }
-                }
-                // The same thing as the first 'if' statement, but now handling the case where current node is in ToVertex place
-                else if (currNodeID == edge.ToVertex.ID && areBothVerticesTrackSections)
-                {
-                    if (!visited.Contains(edge.FromVertex))
-                    {
-                        M_TrackSection ts = (M_TrackSection)edge.FromVertex;
-                        NetElement refNetElem = ts.ThisNetElement;
-
-                        foreach (var rel in refNetElem.Relations)
-                        {
-                            NetRelation netRel = rel.ActualNetRelationRef;
-
-                            bool isFromVertexAndElementAEqual = netRel.ElementA.ElementRef.Equals(edge.FromVertex.ID);
-                            bool isToVertexAndElementBEqual = netRel.ElementB.ElementRef.Equals(edge.ToVertex.ID);
-                            bool isNavigabilityEnabled = !netRel.Navigability.Equals("None");
-
-                            if (isFromVertexAndElementAEqual && isToVertexAndElementBEqual && isNavigabilityEnabled)
-                            {
-                                pathList.Add(edge.FromVertex);
-                                Task1_FindAllTrainPathsUtil(edge.FromVertex.ID, finalNodeID, visited, pathList);
-
-                                pathList.Remove(edge.FromVertex);
+                                pathList.Remove(nextVertex);
                             }
                         }
                     }
