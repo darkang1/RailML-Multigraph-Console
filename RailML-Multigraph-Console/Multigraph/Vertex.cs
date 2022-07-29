@@ -32,9 +32,35 @@ namespace RailML_Multigraph_Console
         [DataMember]
         public List<Coordinate> Coordinates { get; protected set; } = new List<Coordinate>();
 
-        // Contains HashSet of Layer(s) ID's vertex belongs to
+        // Contains Dictionary of Layer(s) ID's vertex belongs to
         [DataMember]
-        public HashSet<string> Layers { get; protected set; } = new HashSet<string>();
+        public Dictionary<string, Layer> Layers { get; protected set; } = new Dictionary<string, Layer>();
+
+
+        public bool AddLayerReference(Layer layer)
+        {
+            // Adding this just in case someone going to use this function outside of Multigraph
+            layer.Vertices.TryAdd(ID, this);
+
+            return Layers.TryAdd(layer.Name, layer);
+        }
+
+        public bool RemoveLayerReference(Layer layer)
+        {
+            // Adding this just in case someone going to use this function outside of Multigraph
+            layer.Vertices.Remove(ID);
+
+            return Layers.Remove(layer.Name);
+        }
+
+        public bool RemoveLayerReference(string layerName)
+        {
+            // Adding this just in case someone going to use this function outside of Multigraph
+            if(Layers.TryGetValue(layerName, out Layer layer))
+                layer.Vertices.Remove(ID);
+
+            return Layers.Remove(layerName);
+        }
 
         public bool UpdateName(string newName)
         {
@@ -67,16 +93,6 @@ namespace RailML_Multigraph_Console
                 return false;
         }
 
-        public bool AddLayerReference(string layerName)
-        {
-            return this.Layers.Add(layerName);
-
-        }
-
-        public bool RemoveLayerReference(string layerName)
-        {
-            return this.Layers.Remove(layerName);
-        }
     }
 
     // NetElement

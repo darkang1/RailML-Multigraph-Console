@@ -25,16 +25,18 @@ namespace RailML_Multigraph_Console
         // Layers
         [DataMember]
         public Dictionary<string, Layer> Layers { get; protected set; } = new Dictionary<string, Layer>();
-        
+
         // Relations, Coordinate Elements, and all possible Travel Paths
         public Dictionary<string, NetRelation> NetRelations { get; private set; } = new Dictionary<string, NetRelation>();
         public Dictionary<string, SpotElementProjection> SpotElements { get; private set; } = new Dictionary<string, SpotElementProjection>();
         public Dictionary<string, LinearElementProjection> LinearElements { get; private set; } = new Dictionary<string, LinearElementProjection>();
         public Dictionary<string, HashSet<Vertex>> TravelPaths { get; private set; } = new Dictionary<string, HashSet<Vertex>>();
 
+        public bool CanCreateNonExistingLayerOnVertexAdd { get; private set; } = false;
+
 
         #region Vertex Functions
-        // AdjList Modified
+
         public void AddElements(HashSet<ParsedElement> vertices)
         {
             if (vertices != null)
@@ -85,15 +87,32 @@ namespace RailML_Multigraph_Console
             }
         }
 
-        // AdjList Modified
         public bool RemoveVertex(string id)
         {
             RemoveVertexFromAdjList(id);
             RemoveVertexFromEdgeList(id);
+            RemoveVertexFromLayers(id);
             return Vertices.Remove(id);
         }
 
-        // AdjList Modified
+        public void RemoveVertexFromLayers(string id)
+        {
+            if(Vertices.TryGetValue(id, out Vertex v))
+            {
+                // Looking inside each layer Vertex is related to and from that Layer reference remove Vertex from Layer
+                foreach(Layer l in v.Layers.Values)
+                {
+                    if (Layers.TryGetValue(l.Name, out Layer layer))
+                    {
+                        // Removing vertex from Layer it is related to
+                        layer.Vertices.Remove(id);
+                        // Removing Layer reference inside Vertex, just in case
+                        v.RemoveLayerReference(l);
+                    }
+                }
+            }
+        }
+
         public void RemoveVertexFromEdgeList(string id)
         {
             foreach (Edge e in Edges.Values)
@@ -105,7 +124,6 @@ namespace RailML_Multigraph_Console
             }
         }
 
-        // AdjList Modified
         public void RemoveVertexFromAdjList(string vertexId)
         {
             Dictionary<string, Edge> adjListValues;
@@ -198,21 +216,18 @@ namespace RailML_Multigraph_Console
 
         #region Edge Functions
 
-        // AdjList Modified
         public bool AddEdge(Edge ne)
         {
             AddEdgeToAdjList(ne);
             return Edges.TryAdd(ne.ID, ne);
         }
 
-        // AdjList Modified
         public bool AddEdge(Vertex from, Vertex to, EdgeType type = EdgeType.Unassigned, bool isDirected = true)
         {
             Edge ne = new Edge(from, to, type, isDirected);
             return AddEdge(ne);
         }
 
-        // AdjList Modified
         public void AddEdgeToAdjList(Edge ne)
         {
             Dictionary<string, Edge> adjListValues;
@@ -240,20 +255,17 @@ namespace RailML_Multigraph_Console
             }
         }
 
-        // AdjList Modified
         public bool RemoveEdge(string edgeID)
         {
             return Edges.Remove(edgeID);
         }
 
-        // AdjList Modified
         public bool RemoveEdge(string vertexId, string edgeID)
         {
             RemoveEdgeFromAdjList(vertexId, edgeID);
             return Edges.Remove(edgeID);
         }
 
-        // AdjList Modified
         public void RemoveEdgeFromAdjList(string vertexId, string edgeID)
         {
             Dictionary<string, Edge> adjListValues;
@@ -279,7 +291,7 @@ namespace RailML_Multigraph_Console
                 }
             }
         }
-
+        
         public void AssignEdgesForAllVertices()
         {
             foreach (Vertex v in Vertices.Values ?? Enumerable.Empty<Vertex>())
@@ -288,7 +300,6 @@ namespace RailML_Multigraph_Console
             }
         }
 
-        // AdjList Modified
         public bool AutoAssignEdge(Vertex v)
         {
             if (v != null)
@@ -410,8 +421,8 @@ namespace RailML_Multigraph_Console
                 // Calling recursive funciton to find all possible paths
                 Task1_FindAllTrainPathsUtil(startNodeID, finalNodeID, visited, pathList);
             }
-            else
-                throw new ArgumentException("Invalid Vertex ID was passsed to train path traversing function!");         
+            //else
+                //throw new ArgumentException("Invalid Vertex ID was passsed to train path traversing function!");         
         }
 
         public void Task1_FindAllTrainPathsUtil(string currNodeID, string finalNodeID, HashSet<Vertex> visited, HashSet<Vertex> pathList)
@@ -551,6 +562,9 @@ namespace RailML_Multigraph_Console
             Console.WriteLine("\n|---------------------------------------------|\n");
             Console.WriteLine("[Task2 Results]");
             Console.WriteLine("(Calculated length for all train paths from geometric positioning coordinates)\n");
+            if(results.Count < 1)
+                Console.WriteLine("TravelPaths list is empty!");
+            
             foreach(var item in results)
             {
                 Console.WriteLine($"ID: {item.Key}");
@@ -593,31 +607,88 @@ namespace RailML_Multigraph_Console
         #endregion
 
         #region Layers
-        // NOT IMPLEMENTED YET
-        public bool AutoGenerateBasicLayers()
+
+        public void AutoAssignBasicVerticesToLayers()
+        {
+            bool toRestoreSettings = CanCreateNonExistingLayerOnVertexAdd;
+            
+            // We need this setting to be true in order to create basic Layers without a problem
+            CanCreateNonExistingLayerOnVertexAdd = true;
+            foreach (Vertex v in Vertices.Values)
             {
-                //foreach(M_TrackSection netElem in TrackSections.Values ?? Enumerable.Empty<M_TrackSection>())
-                //{
+                // [M_TrackSection]
+                if (v is M_TrackSection)
+                    AddVertexToLayer(v, "TrackSection");
+                // [M_BaliseGroup]
+                else if (v is M_BaliseGroup)
+                    AddVertexToLayer(v, "Balises");
+                // [M_Point]
+                else if (v is M_Point)
+                    AddVertexToLayer(v, "SwitchesIS");
+                // [M_Track]
+                else if (v is M_Track)
+                    AddVertexToLayer(v, "Tracks");
 
-                //}
-                return true;
+                // More to be added with the addition of new Vertex types
             }
+            CanCreateNonExistingLayerOnVertexAdd = toRestoreSettings;
+        }
 
-            // Creates new empty layer
-            public bool CreateLayer(string layerName)
+        public bool AddEmptyLayer(string name)
+        {
+            return Layers.TryAdd(name, new Layer(name));
+        }
+
+        // If Layer with provided layerName doesn't exist, creates a new layer with this name
+        public void AddVertexToLayer(Vertex v, string layerName)
+        {   
+            // If Layer exists
+            if (Layers.TryGetValue(layerName, out Layer existingLayer))
             {
-                Layer layer = new Layer(layerName);
-                return Layers.TryAdd(layerName, layer);
+                v.AddLayerReference(existingLayer);
+                existingLayer.Vertices.TryAdd(v.ID, v);
             }
-
-            // Creates new layer with vertices
-            public bool CreateLayer(string layerName, Dictionary<string, Vertex> vertices)
+            else
             {
-                Layer layer = new Layer(layerName, vertices);
-                return Layers.TryAdd(layerName, layer);
-            }
+                if (!CanCreateNonExistingLayerOnVertexAdd)
+                {
+                    Console.Error.WriteLine("Cannot create non-existing layer! (Modify accroding settings in Multigraph)");
+                    return;
+                }
+                   
 
-            #endregion
+                if (Layers.TryAdd(layerName, new Layer(layerName)))
+                {
+                    if(Layers.TryGetValue(layerName, out Layer createdLayer))
+                    {
+                        v.AddLayerReference(createdLayer);
+                        createdLayer.Vertices.TryAdd(v.ID, v);
+                    }
+                }
+            }
+        }
+
+        public void AddVertexToLayer(string vertexID, string layerName)
+        {
+            if(Vertices.TryGetValue(vertexID, out Vertex v))
+                AddVertexToLayer(v, layerName);
+        }
+
+        public bool RemoveLayer(string layerName)
+        {
+            if(Layers.TryGetValue(layerName, out Layer layer))
+            {
+                // Removing Layer reference from each Vertex inside Layer to be removed
+                foreach(Vertex v in layer.Vertices.Values)
+                {
+                    v.RemoveLayerReference(layer);
+                }
+                return Layers.Remove(layerName);
+            }
+            return false;
+        }
+
+        #endregion
 
         #region Printing Functions
         public void DisplayAllVertices()
@@ -647,6 +718,12 @@ namespace RailML_Multigraph_Console
                         foreach (Coordinate c in Vertices.Values.ElementAt(i).Coordinates ?? Enumerable.Empty<Coordinate>())
                         {
                             Console.Write($"({c.X}, {c.Y}) ");
+                        }
+
+                        Console.Write($"\nLayers: ");
+                        foreach (string layerName in Vertices.Values.ElementAt(i).Layers.Keys)
+                        {
+                            Console.Write($"{layerName} ");
                         }
 
                         Console.Write($"\nType: ");

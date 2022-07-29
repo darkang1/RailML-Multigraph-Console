@@ -60,7 +60,16 @@ namespace RailML_Multigraph_Console
                 mg.AssignEdgesForAllVertices();
                 mg.AutoAssignElementsCoordinates();
 
+                // Adding all vertices to "base" layers
+                mg.AutoAssignBasicVerticesToLayers();
+                mg.RemoveLayer("Tracks");
+
+                // Adding vertex to another layer
+                mg.AddEmptyLayer("NewLayer");
+                mg.AddVertexToLayer("ne1", "NewLayer");
+
                 // Updating parameters of some vertex
+                mg.RemoveVertex("trk2");
                 mg.UpdateAnyVertexName("swi3", "NEW_SWITCH_NAME");
                 mg.UpdateAnyVertexColor("swi3", VertexColors.Blue);
                 mg.UpdateAnyVertexSpotCoordinate("swi3", 777.07, 777.77);
@@ -74,6 +83,7 @@ namespace RailML_Multigraph_Console
                 mg.DisplayAllEdges();
                 mg.DisplayAdjList();
 
+                //// TESTING TASKS ////
                 // Start tracksection
                 string s = "ne1";
                 // Destination tracksection
@@ -85,7 +95,6 @@ namespace RailML_Multigraph_Console
                 mg.Task2_FindLengthOfAllTravelPaths();
 
                 /////////////////////////
-
 
                 // SERIALIZING //
 

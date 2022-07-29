@@ -14,8 +14,6 @@ namespace RailML_Multigraph_Console
     /// 2. Can only add existing vertices in Multigraph
     /// 3. If vertice removed from Layer, DO NOT remove it from Multigraph
     ///      If vertice removed from Multigraph, REMOVE it from Layer
-    /// 4. If edge removed from Layer, REMOVE it from Multigraph     (?)
-    ///      If edge removed from Multigraph, REMOVE it from Layer
     /// </summary>
     public class Layer
     {
@@ -36,9 +34,8 @@ namespace RailML_Multigraph_Console
             SetName(name);
             Color = color;
         }
-
-        // Constructor for generating "base" layers of automatically parsed multigraph elements
-        // For now 'Color' is not specified
+        
+        // Overloaded constructor in case if we can pass full Dictionary of specific vertices
         public Layer(string name, Dictionary<string, Vertex> vertices, string color = "None")
         {
             ID = GenerateID();
@@ -55,7 +52,7 @@ namespace RailML_Multigraph_Console
           
         }
 
-        public bool SetName(string name)
+        private bool SetName(string name)
         {
             if(!String.IsNullOrWhiteSpace(name))
             {
